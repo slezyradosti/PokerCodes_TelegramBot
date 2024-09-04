@@ -30,10 +30,9 @@ bot.onText(/\/get_posts/, async (msg) => {
 
   try {
     const posts = await getLatestPosts();
-    if (posts.length > 0) {
-      for (const post of posts) {
-        await bot.sendMessage(chatId, post);
-      }
+    if (posts.length > 0) {     
+      const message = posts.join('\n\n')
+      await bot.sendMessage(chatId, message);
     } else {
       bot.sendMessage(chatId, 'No posts found.');
     }
@@ -76,6 +75,18 @@ async function getLatestPosts() {
       const postString = `Title: ${title}\nDate: ${date}\nTime: ${time}\nPrize: ${prize}\nName: ${name}\nID: ${id}\nBuy-in: ${buyin}\nPassword: ${password}`;
 
       posts.push(postString);
+
+      // remember
+      if (!seenPosts.has(postString)) {
+        seenPosts.set(postString, true);
+
+        // Remove the oldest post if there are more than 4
+        if (seenPosts.size > 4) {
+          // Map maintains insertion order, so we can get the first key
+          const oldestPost = seenPosts.keys().next().value;
+          seenPosts.delete(oldestPost);
+        }
+      }
     });
 
     // Reverse the posts before returning
@@ -142,7 +153,7 @@ async function getUnseenLatestPost() {
 }
 
 // Schedule task to run every 30 minutes
-cron.schedule('*/20 12-23 * * *', async () => {
+cron.schedule('*/6 12-23 * * *', async () => {
   if (chatId) {
     try {
       const posts = await getUnseenLatestPost();
