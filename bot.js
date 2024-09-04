@@ -54,7 +54,7 @@ async function getLatestPosts() {
     const posts = [];
 
     $('.view-content .nodepass').each((index, element) => {
-      if (posts.length == 2) return posts;
+      if (index >= 3) return false; // Break the loop when 3 posts are added
 
       const title = $(element).find('.h2div.title a').text().trim() || '[Not Provided]';
       const date = $(element).find('.submitted').text().trim() || '[Not Provided]';
@@ -75,6 +75,49 @@ async function getLatestPosts() {
 
       const postString = `Title: ${title}\nDate: ${date}\nTime: ${time}\nPrize: ${prize}\nName: ${name}\nID: ${id}\nBuy-in: ${buyin}\nPassword: ${password}`;
 
+      posts.push(postString);
+    });
+
+    // Reverse the posts before returning
+    return posts.reverse();
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    return [];
+  }
+}
+
+// Function to fetch and parse the latest posts
+async function getUnseenLatestPost() {
+  const url = 'https://www.uapoker.info/paroli-na-frirolly-pokerstars';
+
+  try {
+    const response = await axios.get(url);
+    const html = response.data;
+    const $ = cheerio.load(html);
+
+    const posts = [];
+
+    $('.view-content .nodepass').each((index, element) => {
+      if (index >= 3) return false; // Break the loop when 3 posts are added
+
+      const title = $(element).find('.h2div.title a').text().trim() || '[Not Provided]';
+      const date = $(element).find('.submitted').text().trim() || '[Not Provided]';
+      const prize = $(element).find('.field-field-buyin:contains("Призы:")').text().replace('Призы:', '').trim() || '[Not Provided]';
+      const name = $(element).find('.field-field-buyin:contains("Название турнира:")').text().replace('Название турнира:', '').trim() || '[Not Provided]';
+      const id = $(element).find('.field-field-buyin:contains("ID:")').text().replace('ID:', '').trim() || '[Not Provided]';
+      const buyin = $(element).find('.field-field-buyin:contains("Бай-ин:")').text().replace('Бай-ин:', '').trim() || '[Not Provided]';
+
+      const timeElement = $(element).find('.field-field-time');
+      const time = timeElement.contents().filter(function() {
+        return this.nodeType === 3; // Node.TEXT_NODE
+      }).text().trim() || '[Not Provided]';
+
+      const passwordElement = $(element).find('.field-field-buyin.field-password');
+      const password = passwordElement.contents().filter(function() {
+        return this.nodeType === 3; // Node.TEXT_NODE
+      }).text().trim() || '[Not Provided]';
+
+      const postString = `Title: ${title}\nDate: ${date}\nTime: ${time}\nPrize: ${prize}\nName: ${name}\nID: ${id}\nBuy-in: ${buyin}\nPassword: ${password}`;
       // Only push new posts
       if (!seenPosts.has(postString)) {
         seenPosts.set(postString, true);
@@ -90,8 +133,8 @@ async function getLatestPosts() {
       }
     });
 
-    return posts;
-
+    // Reverse the posts before returning
+    return posts.reverse();
   } catch (error) {
     console.error('Error fetching posts:', error);
     return [];
@@ -99,10 +142,10 @@ async function getLatestPosts() {
 }
 
 // Schedule task to run every 30 minutes
-cron.schedule('*/30 * * * *', async () => {
+cron.schedule('*/20 12-23 * * *', async () => {
   if (chatId) {
     try {
-      const posts = await getLatestPosts();
+      const posts = await getUnseenLatestPost();
       if (posts.length > 0) {
         for (const post of posts) {
           await bot.sendMessage(chatId, post);
